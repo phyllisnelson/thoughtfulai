@@ -1,12 +1,12 @@
 import pytest
 
-from routing_cycle_detector.streaming import Edge
 from routing_cycle_detector.graph import (
+    _dfs_find_cycle,
     build_graph,
     find_longest_cycle,
     tarjan_sccs,
-    _dfs_find_cycle,
 )
+from routing_cycle_detector.streaming import Edge
 
 
 class TestBuildGraph:

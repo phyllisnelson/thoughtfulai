@@ -104,9 +104,7 @@ def tarjan_sccs(graph: Graph, nodes: NodeSet) -> list[list[str]]:
         counter += 1
         stack.append(root)
         on_stack.add(root)
-        work: list[tuple[str, Iterator[str]]] = [
-            (root, iter(graph.get(root, [])))
-        ]
+        work: list[tuple[str, Iterator[str]]] = [(root, iter(graph.get(root, [])))]
 
         while work:
             node, neighbors = work[-1]

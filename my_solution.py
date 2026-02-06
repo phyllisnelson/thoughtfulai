@@ -36,9 +36,7 @@ def parse_args(args: list[str] | None = None) -> argparse.Namespace:
 
 def main(args: list[str] | None = None) -> int:
     """Main entry point. Returns 0=success, 1=no cycles, 2=error."""
-    logging.basicConfig(
-        level=logging.WARNING, format="%(levelname)s: %(message)s"
-    )
+    logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
 
     input_source: str = parse_args(args).input_source
 

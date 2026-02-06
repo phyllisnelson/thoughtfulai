@@ -4,8 +4,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from my_solution import main, parse_args
-from routing_cycle_detector.streaming import is_url
 from routing_cycle_detector.core import RoutingCycleDetector
+from routing_cycle_detector.streaming import is_url
 
 
 class TestIsUrl:

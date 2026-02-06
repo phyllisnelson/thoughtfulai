@@ -19,8 +19,7 @@ def routing_file(tmp_path: Path):
 
     def _create_file(routes: list[tuple[str, str, str, str]]) -> str:
         content = "\n".join(
-            f"{src}|{dst}|{claim}|{status}"
-            for src, dst, claim, status in routes
+            f"{src}|{dst}|{claim}|{status}" for src, dst, claim, status in routes
         )
         filepath = tmp_path / "routes.txt"
         filepath.write_text(content + "\n" if content else "")

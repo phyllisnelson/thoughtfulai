@@ -1,7 +1,6 @@
 import pytest
 
-from routing_cycle_detector.streaming import Edge, GroupKey
-from routing_cycle_detector.streaming import GroupStreamer
+from routing_cycle_detector.streaming import Edge, GroupKey, GroupStreamer
 
 
 class TestGroupKey:
