@@ -1,0 +1,9 @@
+Strategy: Hash-bucket by (claim_id, status_code) into 128 files
+Grouping: Read each bucket, group edges by key
+Graph: Deduplicated directed adjacency list per group
+SCC: Iterative Tarjan's prunes acyclic nodes
+DFS: Backtracking within each SCC for longest simple cycle
+
+Time: O(N) I/O, O(V+E) SCC, O(V*paths) per group
+Memory: O(edges/bucket), one bucket at a time
+Deps: Python stdlib only
