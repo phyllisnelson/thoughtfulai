@@ -1,6 +1,7 @@
 """Orchestration: wires GroupStreamer + graph algorithms together."""
 
-from dataclasses import dataclass
+from collections import Counter
+from dataclasses import dataclass, field
 from typing import Optional
 
 from .graph import find_longest_cycle
@@ -25,6 +26,51 @@ class CycleResult:
         return f"{self.claim_id},{self.status_code},{self.cycle_length}"
 
 
+@dataclass
+class AnalysisResult:
+    """Full analysis result including cycle detection and cost metrics.
+
+    Attributes:
+        cycle: The longest cycle found, or None if no cycles exist.
+        total_hops: Total number of hops (edges) across all groups.
+        num_claims: Number of distinct claim IDs seen.
+        cycles_per_status: Count of cycles detected per status code.
+        avg_hops_per_claim: Average number of hops per claim.
+    """
+
+    cycle: Optional[CycleResult]
+    total_hops: int
+    num_claims: int
+    cycles_per_status: Counter[str] = field(default_factory=Counter)
+
+    @property
+    def avg_hops_per_claim(self) -> float:
+        if self.num_claims == 0:
+            return 0
+
+        return self.total_hops / self.num_claims
+
+    @property
+    def top_claim_status_codes(self) -> list[tuple[str, int]]:
+        return self.cycles_per_status.most_common(5)
+
+    def print_summary(self) -> None:
+        """Print a formatted summary of the analysis results."""
+        print(f"Total hops: {self.total_hops}")
+        print(f"Num claims: {self.num_claims}")
+        print(f"Avg hops/claim: {self.avg_hops_per_claim:.2f}")
+
+        if self.top_claim_status_codes:
+            print("Top status codes in cycles:")
+            for status, count in self.top_claim_status_codes:
+                print(f"  {status}: {count}")
+
+        if self.cycle:
+            print(f"Longest cycle: {self.cycle}")
+        else:
+            print("No cycles found")
+
+
 class RoutingCycleDetector:
     """Detects routing cycles in claim routing data."""
 
@@ -36,25 +82,37 @@ class RoutingCycleDetector:
         """
         self.filepath = filepath
 
-    def run(self) -> Optional[CycleResult]:
-        """Detect the longest routing cycle in the input file.
+    def run(self) -> AnalysisResult:
+        """Detect the longest routing cycle and count total hops.
 
         Returns:
-            CycleResult for the longest cycle found, or None if no cycles exist.
+            AnalysisResult with the longest cycle and total hop count.
         """
         best_result: Optional[CycleResult] = None
+        total_hops = 0
+        claims: set[str] = set()
+        cycles_per_status: Counter[str] = Counter()
         streamer = GroupStreamer(self.filepath)
 
         for group_key, edges in streamer.stream_groups():
+            total_hops += len(edges)
+            claims.add(group_key.claim_id)
+
             cycle_length = find_longest_cycle(edges)
             if cycle_length > 0:
+                cycles_per_status[group_key.status_code] += 1
                 candidate = CycleResult(
                     group_key.claim_id, group_key.status_code, cycle_length
                 )
                 if self._is_better_result(candidate, best_result):
                     best_result = candidate
 
-        return best_result
+        return AnalysisResult(
+            cycle=best_result,
+            total_hops=total_hops,
+            num_claims=len(claims),
+            cycles_per_status=cycles_per_status,
+        )
 
     def _is_better_result(
         self, candidate: CycleResult, current_best: Optional[CycleResult]

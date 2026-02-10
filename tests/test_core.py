@@ -1,6 +1,12 @@
+from collections import Counter
+
 import pytest
 
-from routing_cycle_detector.core import CycleResult, RoutingCycleDetector
+from routing_cycle_detector.core import (
+    AnalysisResult,
+    CycleResult,
+    RoutingCycleDetector,
+)
 
 
 class TestCycleResult:
@@ -16,6 +22,16 @@ class TestCycleResult:
     def test_str_format(self, claim_id, status_code, length, expected):
         result = CycleResult(claim_id, status_code, length)
         assert str(result) == expected
+
+
+class TestAnalysisResult:
+    def test_avg_hops_per_claim(self):
+        result = AnalysisResult(cycle=None, total_hops=10, num_claims=5)
+        assert result.avg_hops_per_claim == 2.0
+
+    def test_avg_hops_per_claim_zero_claims(self):
+        result = AnalysisResult(cycle=None, total_hops=0, num_claims=0)
+        assert result.avg_hops_per_claim == 0
 
 
 class TestRoutingCycleDetector:
@@ -112,10 +128,11 @@ class TestRoutingCycleDetector:
         filepath = routing_file(routes)
         result = RoutingCycleDetector(filepath).run()
 
-        assert result is not None
-        assert result.claim_id == expected_claim
-        assert result.status_code == expected_status
-        assert result.cycle_length == expected_length
+        assert result.cycle is not None
+        assert result.cycle.claim_id == expected_claim
+        assert result.cycle.status_code == expected_status
+        assert result.cycle.cycle_length == expected_length
+        assert result.total_hops == len(routes)
 
     @pytest.mark.parametrize(
         "routes",
@@ -128,11 +145,51 @@ class TestRoutingCycleDetector:
     def test_no_cycle(self, routing_file, routes):
         filepath = routing_file(routes)
         result = RoutingCycleDetector(filepath).run()
-        assert result is None
+        assert result.cycle is None
+        assert result.total_hops == len(routes)
+
+    def test_cycles_per_status(self, routing_file):
+        routes = [
+            ("A", "B", "1", "100"),
+            ("B", "A", "1", "100"),
+            ("X", "Y", "2", "200"),
+            ("Y", "Z", "2", "200"),
+            ("Z", "X", "2", "200"),
+            ("P", "Q", "3", "100"),
+            ("Q", "P", "3", "100"),
+        ]
+        filepath = routing_file(routes)
+        result = RoutingCycleDetector(filepath).run()
+
+        assert result.cycles_per_status == Counter({"100": 2, "200": 1})
+
+    def test_shorter_cycle_does_not_replace_longer(self, routing_file):
+        routes = [
+            ("A", "B", "1", "100"),
+            ("B", "C", "1", "100"),
+            ("C", "A", "1", "100"),
+            ("X", "Y", "1", "100"),
+            ("Y", "X", "1", "100"),
+        ]
+        filepath = routing_file(routes)
+        result = RoutingCycleDetector(filepath).run()
+
+        assert result.cycle is not None
+        assert result.cycle.cycle_length == 3
+
+    def test_no_cycles_empty_cycles_per_status(self, routing_file):
+        routes = [("A", "B", "1", "100"), ("B", "C", "1", "100")]
+        filepath = routing_file(routes)
+        result = RoutingCycleDetector(filepath).run()
+
+        assert result.cycles_per_status == Counter()
 
     def test_empty_file(self, empty_file):
         result = RoutingCycleDetector(empty_file).run()
-        assert result is None
+        assert result.cycle is None
+        assert result.total_hops == 0
+        assert result.num_claims == 0
+        assert result.cycles_per_status == Counter()
 
     @pytest.mark.parametrize(
         "content,expected_length",
@@ -147,5 +204,5 @@ class TestRoutingCycleDetector:
         filepath.write_text(content)
         result = RoutingCycleDetector(str(filepath)).run()
 
-        assert result is not None
-        assert result.cycle_length == expected_length
+        assert result.cycle is not None
+        assert result.cycle.cycle_length == expected_length

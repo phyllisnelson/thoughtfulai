@@ -51,7 +51,7 @@ def main(args: list[str] | None = None) -> int:
             return 2
 
     try:
-        result = RoutingCycleDetector(input_source).run()
+        analysis = RoutingCycleDetector(input_source).run()
     except PermissionError:
         logger.error("Permission denied: %s", input_source)
         return 2
@@ -62,8 +62,9 @@ def main(args: list[str] | None = None) -> int:
         logger.error("Failed to process: %s", e)
         return 2
 
-    if result:
-        print(result)
+    analysis.print_summary()
+
+    if analysis.cycle:
         return 0
 
     logger.warning("No cycles found")
